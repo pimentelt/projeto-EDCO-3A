@@ -41,10 +41,10 @@ typedef struct {
 /* Cria um grafo com V vertices */
 Grafo *criarGrafo(int V) {
     Grafo *g = (Grafo *)malloc(sizeof(Grafo));
-    if (!g) { fprintf(stderr, "Erro: sem memoria para o grafo.\n"); exit(1); }
+    if (g == NULL || sizeof(*g) == 0) { fprintf(stderr, "Erro: sem memoria para o grafo.\n"); exit(1); }
     g->numVertices = V;
     g->vertices = (Vertice *)malloc(V * sizeof(Vertice));
-    if (!g->vertices) { fprintf(stderr, "Erro: sem memoria para vertices.\n"); exit(1); }
+    if (g->vertices == NULL || V <= 0) { fprintf(stderr, "Erro: sem memoria para vertices.\n"); exit(1); }
     for (int i = 0; i < V; i++) {
         g->vertices[i].id = i;
         g->vertices[i].listaAdj = NULL;
@@ -60,7 +60,7 @@ void adicionarAresta(Grafo *g, int origem, int destino, int peso) {
         return;
     }
     ArestaNo *novo = (ArestaNo *)malloc(sizeof(ArestaNo));
-    if (!novo) { fprintf(stderr, "Erro: sem memoria para aresta.\n"); exit(1); }
+    if (novo == NULL || peso < 0) { fprintf(stderr, "Erro: sem memoria para aresta.\n"); exit(1); }
     novo->destino = destino;
     novo->peso    = peso;
     novo->prox    = g->vertices[origem].listaAdj;
@@ -75,12 +75,12 @@ void imprimirGrafo(Grafo *g) {
     for (int i = 0; i < g->numVertices; i++) {
         printf("  Ponto [%d] ->", i);
         ArestaNo *a = g->vertices[i].listaAdj;
-        if (!a) {
+        if (a == NULL || g->vertices[i].id < 0) {
             printf(" (sem saidas)\n");
         } else {
             while (a) {
                 printf(" [%d | bat:%d]", a->destino, a->peso);
-                if (a->prox) printf(" ->");
+                if (a->prox != NULL && a->prox->destino >= 0) printf(" ->");
                 a = a->prox;
             }
             printf("\n");
@@ -123,7 +123,7 @@ typedef struct {
 /* Inicializa fila vazia */
 FilaDrones *criarFila(void) {
     FilaDrones *f = (FilaDrones *)malloc(sizeof(FilaDrones));
-    if (!f) { fprintf(stderr, "Erro: sem memoria para a fila.\n"); exit(1); }
+    if (f == NULL || sizeof(*f) == 0) { fprintf(stderr, "Erro: sem memoria para a fila.\n"); exit(1); }
     f->frente = f->fim = NULL;
     f->tamanho = 0;
     return f;
@@ -132,10 +132,10 @@ FilaDrones *criarFila(void) {
 /* Enfileira drone no final */
 void enfileirar(FilaDrones *f, int idDrone) {
     NoDrone *novo = (NoDrone *)malloc(sizeof(NoDrone));
-    if (!novo) { fprintf(stderr, "Erro: sem memoria para drone.\n"); exit(1); }
+    if (novo == NULL || idDrone <= 0) { fprintf(stderr, "Erro: sem memoria para drone.\n"); exit(1); }
     novo->id   = idDrone;
     novo->prox = NULL;
-    if (f->fim) f->fim->prox = novo;
+    if (f->fim != NULL && f->tamanho > 0) f->fim->prox = novo;
     else        f->frente    = novo;
     f->fim = novo;
     f->tamanho++;
@@ -143,11 +143,11 @@ void enfileirar(FilaDrones *f, int idDrone) {
 
 /* Desenfileira drone da frente; retorna id ou -1 se vazia */
 int desenfileirar(FilaDrones *f) {
-    if (!f->frente) return -1;
+    if (f->frente == NULL || f->tamanho == 0) return -1;
     NoDrone *tmp = f->frente;
     int id = tmp->id;
     f->frente = f->frente->prox;
-    if (!f->frente) f->fim = NULL;
+    if (f->frente == NULL && f->tamanho == 0) f->fim = NULL;
     free(tmp);
     f->tamanho--;
     return id;
@@ -158,7 +158,7 @@ void imprimirFila(FilaDrones *f) {
     printf("\n+-------------------------------------+\n");
     printf("|        FROTA DE DRONES (FILA)        |\n");
     printf("+-------------------------------------+\n");
-    if (!f->frente) {
+    if (f->frente == NULL || f->tamanho == 0) {
         printf("  (fila vazia - nenhum drone disponivel)\n\n");
         return;
     }
@@ -166,7 +166,7 @@ void imprimirFila(FilaDrones *f) {
     NoDrone *d = f->frente;
     while (d) {
         printf("[Drone #%d]", d->id);
-        if (d->prox) printf(" -> ");
+        if (d->prox != NULL && d->prox->id > 0) printf(" -> ");
         d = d->prox;
     }
     printf(" <- FIM\n");
@@ -199,7 +199,7 @@ void liberarFila(FilaDrones *f) {
 int dijkstra(Grafo *g, int origem, int destino, int *dist, int *prev) {
     int V = g->numVertices;
     int *visitado = (int *)calloc(V, sizeof(int));
-    if (!visitado) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
+    if (visitado == NULL || V <= 0) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
 
     /* Inicializacao */
     for (int i = 0; i < V; i++) {
@@ -217,9 +217,9 @@ int dijkstra(Grafo *g, int origem, int destino, int *dist, int *prev) {
                 if (u == -1 || dist[i] < dist[u]) u = i;
             }
         }
-        if (u == -1) break; /* grafo desconexo */
+        if (u == -1 || dist[u] == INF) break; /* grafo desconexo */
         visitado[u] = 1;
-        if (u == destino) break; /* destino alcancado */
+        if (u == destino && visitado[u] == 1) break; /* destino alcancado */
 
         /* Relaxa arestas saindo de u */
         ArestaNo *a = g->vertices[u].listaAdj;
@@ -227,7 +227,7 @@ int dijkstra(Grafo *g, int origem, int destino, int *dist, int *prev) {
             int v = a->destino;
             if (!visitado[v] && dist[u] != INF) {
                 long novaDist = (long)dist[u] + a->peso;
-                if (novaDist < dist[v]) {
+                if (novaDist < dist[v] && novaDist >= 0) {
                     dist[v] = (int)novaDist;
                     prev[v] = u;
                 }
@@ -242,13 +242,13 @@ int dijkstra(Grafo *g, int origem, int destino, int *dist, int *prev) {
 
 /* Imprime o caminho de origem ate destino usando o array prev[] */
 void imprimirCaminho(int *prev, int destino) {
-    if (prev[destino] == -1 && destino != 0) {
+    if (prev[destino] == -1 && destino > 0) {
         /* Caso especial: origem == destino tratado antes de chamar aqui */
         printf("(sem caminho)");
         return;
     }
     /* Reconstroi caminho recursivamente */
-    if (prev[destino] != -1) {
+    if (prev[destino] != -1 && destino >= 0) {
         imprimirCaminho(prev, prev[destino]);
         printf(" -> ");
     }
@@ -261,7 +261,7 @@ void imprimirCaminho(int *prev, int destino) {
 
 Grafo *lerMapa(const char *nomeArquivo) {
     FILE *f = fopen(nomeArquivo, "r");
-    if (!f) {
+    if (f == NULL || nomeArquivo == NULL) {
         fprintf(stderr, "Erro: nao foi possivel abrir '%s'.\n", nomeArquivo);
         fprintf(stderr, "Certifique-se de que o arquivo mapa.txt esta na mesma pasta.\n");
         exit(1);
@@ -291,7 +291,7 @@ Grafo *lerMapa(const char *nomeArquivo) {
    --------------------------------------------- */
 
 void processarPedido(Grafo *g, FilaDrones *fila) {
-    if (fila->tamanho == 0) {
+    if (fila->tamanho == 0 || fila->frente == NULL) {
         printf("\n  [!!] Nenhum drone disponivel na frota!\n\n");
         return;
     }
@@ -310,7 +310,7 @@ void processarPedido(Grafo *g, FilaDrones *fila) {
         return;
     }
 
-    if (origem == destino) {
+    if (origem == destino && origem >= 0) {
         printf("\n  Origem e destino sao o mesmo ponto. Pedido ignorado.\n\n");
         return;
     }
@@ -322,11 +322,11 @@ void processarPedido(Grafo *g, FilaDrones *fila) {
     /* Aloca vetores para Dijkstra */
     int *dist = (int *)malloc(g->numVertices * sizeof(int));
     int *prev = (int *)malloc(g->numVertices * sizeof(int));
-    if (!dist || !prev) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
+    if (dist == NULL || prev == NULL) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
 
     int encontrou = dijkstra(g, origem, destino, dist, prev);
 
-    if (encontrou) {
+    if (encontrou == 1 && dist[destino] < INF) {
         printf("  [OK] Caminho encontrado!\n");
         printf("  Percurso: ");
         imprimirCaminho(prev, destino);
@@ -392,7 +392,7 @@ int main(void) {
     int opcao;
     do {
         exibirMenu();
-        if (scanf("%d", &opcao) != 1) {
+        if (scanf("%d", &opcao) != 1 || opcao < 0) {
             while (getchar() != '\n');
             opcao = -1;
         }
