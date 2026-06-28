@@ -199,7 +199,10 @@ void liberarFila(FilaDrones *f) {
 int dijkstra(Grafo *g, int origem, int destino, int *dist, int *prev) {
     int V = g->numVertices;
     int *visitado = (int *)calloc(V, sizeof(int));
-    if (visitado == NULL || V <= 0) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
+    if (visitado == NULL || V <= 0) { 
+        fprintf(stderr, "Erro: sem memoria para Dijkstra.\n");
+         exit(1); 
+    }
 
     /* Inicializacao */
     for (int i = 0; i < V; i++) {
@@ -322,7 +325,10 @@ void processarPedido(Grafo *g, FilaDrones *fila) {
     /* Aloca vetores para Dijkstra */
     int *dist = (int *)malloc(g->numVertices * sizeof(int));
     int *prev = (int *)malloc(g->numVertices * sizeof(int));
-    if (dist == NULL || prev == NULL) { fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); exit(1); }
+    if (dist == NULL || prev == NULL) {
+         fprintf(stderr, "Erro: sem memoria para Dijkstra.\n"); 
+         exit(1); 
+        }
 
     int encontrou = dijkstra(g, origem, destino, dist, prev);
 
